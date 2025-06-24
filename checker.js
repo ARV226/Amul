@@ -1,41 +1,31 @@
-const { chromium } = require('playwright-chromium');
+const axios = require("axios");
+const cheerio = require("cheerio");
 
 async function checkStock(url) {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
-
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // Use ScraperAPI (replace YOUR_API_KEY)
+    const fullUrl = `http://api.scraperapi.com?api_key=YOUR_API_KEY&url=${encodeURIComponent(url)}`;
+    const response = await axios.get(fullUrl, { timeout: 30000 });
 
-    // Wait for something meaningful to load
-    await page.waitForSelector('.product-grid-body, .mobile-btn, .stock-indicator-text', { timeout: 15000 });
+    const $ = cheerio.load(response.data);
 
-    const content = await page.content();
-
-    const isSoldOut = await page.$('.stock-indicator-text');
-    const isAddButton = await page.$('.mobile-btn');
-
-    if (isAddButton) {
-      const text = await isAddButton.innerText();
-      if (text.toLowerCase().includes('add')) {
-        await browser.close();
-        return 'In Stock';
-      }
+    // Check for "Sold Out" label in HTML
+    const soldOut = $('span.stock-indicator-text').text().trim().toLowerCase();
+    
+    if (soldOut.includes('sold out')) {
+      return 'Sold Out';
     }
 
-    if (isSoldOut) {
-      const text = await isSoldOut.innerText();
-      if (text.toLowerCase().includes('sold out')) {
-        await browser.close();
-        return 'Sold Out';
-      }
-    }
+    // Check if an "Add to Cart" or "Notify Me" button exists
+    const notifyMe = $('span:contains("Notify Me")').length > 0;
+    const addToCart = $('span:contains("ADD")').length > 0;
 
-    await browser.close();
+    if (addToCart && !notifyMe) return 'In Stock';
+    if (notifyMe && !addToCart) return 'Sold Out';
+
     return 'Unknown';
   } catch (err) {
-    await browser.close();
-    console.error("Error checking stock:", err.message);
+    console.error(`❌ Error checking ${url}: ${err.message}`);
     return 'Error';
   }
 }
