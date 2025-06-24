@@ -1,0 +1,14 @@
+{
+  "name": "amul-stock-checker",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node monitor.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.44.0",
+    "playwright-chromium": "^1.44.0",
+    "dotenv": "^16.4.0",
+    "axios": "^1.6.8"
+  }
+}
