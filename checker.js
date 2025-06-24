@@ -4,7 +4,7 @@ const cheerio = require("cheerio");
 async function checkStock(url) {
   try {
     // Use ScraperAPI (replace YOUR_API_KEY)
-    const fullUrl = `http://api.scraperapi.com?api_key=YOUR_API_KEY&url=${encodeURIComponent(url)}`;
+    const fullUrl = `http://api.scraperapi.com?api_key=05dcf04d9154b5083eeb41223e507b84&url=${encodeURIComponent(url)}`;
     const response = await axios.get(fullUrl, { timeout: 30000 });
 
     const $ = cheerio.load(response.data);
