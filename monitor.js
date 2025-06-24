@@ -1,59 +1,42 @@
-const checkStock = require('./checker');
-const { sendWhatsApp } = require('./sendWhatsApp');
+const axios = require('axios');
 
-const products = [
-  {
-    name: "Chocolate Whey (60)",
-    url: "https://shop.amul.com/en/product/amul-kool-protein-milkshake-or-kesar-180-ml-or-pack-of-30"
-  },
-  {
-    name: "Whey Protein Gift Pack (10)",
-    url: "https://shop.amul.com/en/product/amul-whey-protein-gift-pack-32-g-or-pack-of-10-sachets"
-  },
-  {
-    name: "Whey Protein (30)",
-    url: "https://shop.amul.com/en/product/amul-whey-protein-32-g-or-pack-of-30-sachets"
-  },
-  {
-    name: "Whey Protein (60)",
-    url: "https://shop.amul.com/en/product/amul-whey-protein-32-g-or-pack-of-60-sachets"
-  },
-  {
-    name: "Chocolate Whey Gift Pack (10)",
-    url: "https://shop.amul.com/en/product/amul-chocolate-whey-protein-gift-pack-34-g-or-pack-of-10-sachets"
-  },
-  {
-    name: "Chocolate Whey (30)",
-    url: "https://shop.amul.com/en/product/amul-chocolate-whey-protein-34-g-or-pack-of-30-sachets"
-  }
-];
-
-const numbers = [
-  "919711720145",  // Your verified WhatsApp numbers
-  "918377884512",
-  "918287154627"
-];
-
-async function monitor() {
-  console.log(`\n===== Stock Check at ${new Date().toLocaleString()} =====\n`);
-
-  for (const product of products) {
-    console.log(`🔍 Checking: ${product.url}`);
-
-    const status = await checkStock(product.url);
-
-    if (status === 'In Stock') {
-      const msg = `✅ ${product.name} is now in stock!\n${product.url}`;
-      console.log(msg); // ✅ Also print in console
-      await sendWhatsApp(numbers, msg);
-    } else if (status === 'Sold Out') {
-      console.log(`❌ ${product.name} is sold out.`);
-    } else {
-      console.log(`⚠️ Unknown status for ${product.name}: ${status}`);
-    }
+async function fetchAmulStockData() {
+  try {
+    const res = await axios.get('https://shop.amul.com/ms/store/amul/cacheEntities/auto/EN/storedata.js');
+    const json = JSON.parse(res.data.replace(/^var storedata = /, '').replace(/;$/, ''));
+    return json.products;
+  } catch (error) {
+    console.error("❌ Failed to fetch Amul store data:", error.message);
+    return null;
   }
 }
 
-// Run every 20 minutes
-setInterval(monitor, 20 * 60 * 1000);
-monitor();
+function checkProductStock(products, keywords, label) {
+  const match = products.find(p =>
+    keywords.every(keyword => p.name.toLowerCase().includes(keyword.toLowerCase()))
+  );
+
+  if (!match) {
+    console.log(`❓ ${label}: Product not found`);
+    return;
+  }
+
+  const inStock = match.stock_status === 'in_stock' || match.quantity > 0;
+  console.log(`${inStock ? '✅' : '❌'} ${label}: ${inStock ? 'In Stock' : 'Sold Out'}`);
+}
+
+async function runStockCheck() {
+  console.log(`\n===== Stock Check at ${new Date().toLocaleString()} =====\n`);
+  const products = await fetchAmulStockData();
+  if (!products) return;
+
+  checkProductStock(products, ['whey', 'gift'], 'Whey Protein Gift Pack (10)');
+  checkProductStock(products, ['whey', '30'], 'Whey Protein (30)');
+  checkProductStock(products, ['whey', '60'], 'Whey Protein (60)');
+  checkProductStock(products, ['chocolate', 'whey', 'gift'], 'Chocolate Whey Gift Pack (10)');
+  checkProductStock(products, ['chocolate', 'whey', '30'], 'Chocolate Whey (30)');
+  checkProductStock(products, ['chocolate', 'whey', '60'], 'Chocolate Whey (60)');
+  checkProductStock(products, ['kesar'], 'Kool Protein Milkshake - Kesar (30)');
+}
+
+runStockCheck();
